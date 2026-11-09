@@ -1,0 +1,27 @@
+name: BirdMaps smoke tests
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check Python and browser JavaScript syntax
+        run: |
+          python -m py_compile server.py routing.py
+          node -e "const fs=require('fs');const vm=require('vm');const html=fs.readFileSync('index.html','utf8');const blocks=[...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)].map(m=>m[1]).filter(Boolean);if(!blocks.length)throw Error('No inline JS');for(const block of blocks)new vm.Script(block);console.log('Browser scripts parse successfully')"
+      - name: Start server and check API
+        run: |
+          PORT=18765 python server.py > /tmp/birdmaps-server.log 2>&1 &
+          echo $! > /tmp/birdmaps-server.pid
+          sleep 2
+          curl --fail --max-time 10 http://127.0.0.1:18765/api/health
+          curl --fail --max-time 10 http://127.0.0.1:18765/ -o /tmp/birdmaps-home.html
+          grep -q "BirdMaps" /tmp/birdmaps-home.html
+          test "$(curl -s -o /tmp/birdmaps-bad.json -w '%{http_code}' 'http://127.0.0.1:18765/api/bird?kind=invalid')" = 400
+          cat /tmp/birdmaps-bad.json
