@@ -39,7 +39,20 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Type','text/html; charset=utf-8')
             self.send_header('Content-Length',str(len(data)))
             self.end_headers();self.wfile.write(data);return
-        if p.path=='/api/health':return self.send_json({'ok':True,'service':'BirdMaps Ottawa'})
+        if p.path=='/api/health':return self.send_json({'ok':True,'service':'BirdMaps Ottawa','build':'bird-feed-diagnostics-v1'})
+        if p.path=='/api/bird-status':
+            target='https://mds.bird.co/gbfs/v2/public/ottawa/gbfs.json'
+            try:
+                request=Request(target,headers={'User-Agent':'Mozilla/5.0 BirdMapsOttawa/0.4','Accept':'application/json'})
+                with urlopen(request,timeout=12) as response:
+                    data=json.loads(response.read(250000))
+                    feeds=data.get('data',{}).get('feeds')
+                    if feeds is None:
+                        feeds=next((v['feeds'] for v in data.get('data',{}).values() if isinstance(v,dict) and isinstance(v.get('feeds'),list)),[])
+                    return self.send_json({'server':'ok','bird':'reachable','discovery_feeds':[x.get('name') for x in feeds or []]})
+            except HTTPError as e:return self.send_json({'server':'ok','bird':'error','http_status':e.code,'detail':'Bird denied the upstream request'},502)
+            except (TimeoutError,URLError) as e:return self.send_json({'server':'ok','bird':'error','detail':str(e)[:300]},502)
+            except Exception as e:return self.send_json({'server':'ok','bird':'error','detail':type(e).__name__+': '+str(e)[:240]},502)
         if p.path!='/api/request':return self.send_json({'error':'Unknown endpoint'},404)
         target=parse_qs(p.query).get('url',[''])[0];u=urlparse(target)
         if u.scheme!='https' or u.hostname not in ALLOWED or u.port not in (None,443) or not any(u.path.startswith(path) for path in ALLOWED.get(u.hostname,())) or u.username or u.password:return self.send_json({'error':'URL not approved'},400)
@@ -54,7 +67,7 @@ class Handler(BaseHTTPRequestHandler):
                 obj=json.loads(data)
             CACHE[target]=(time.time(),obj);return self.send_json(obj)
         except HTTPError as e:return self.send_json({'error':f'{u.hostname} returned HTTP {e.code}'},502)
-        except (URLError,TimeoutError) as e:return self.send_json({'error':f'Unable to reach {u.hostname}'},502)
+        except (URLError,TimeoutError) as e:return self.send_json({'error':f'Unable to reach {u.hostname}: {str(e)[:180]}'},502)
         except Exception:return self.send_json({'error':f'Unable to load data from {u.hostname}'},502)
 def main():
     if os.environ.get('PORT'): host='0.0.0.0';port=int(os.environ['PORT'])
