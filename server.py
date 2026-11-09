@@ -3,6 +3,7 @@ import json
 import os
 import time
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, urlencode
 from urllib.request import Request, urlopen
@@ -49,7 +50,7 @@ def items(doc,key):
     return []
 
 def feed_discovery():
-    doc=fetch_json(BIRD+'gbfs.json')
+    doc=fetch_json(BIRD+'gbfs.json',timeout=7)
     d=doc.get('data',doc)
     if isinstance(d,dict):
         if 'feeds' in d:return d['feeds']
@@ -58,7 +59,7 @@ def feed_discovery():
     return []
 
 def bird_data():
-    result={'stations':[],'zones':[],'vehicles':[],'sources':[],'warnings':[]}
+    result={'stations':[],'zones':[],'vehicles':[],'sources':[],'warnings':[],'bird_zones_loaded':False}
     try:
         feeds=cached('discovery',300,feed_discovery)
         feed_urls={i.get('name'):i.get('url') for i in feeds if isinstance(i,dict) and i.get('url')}
@@ -73,7 +74,7 @@ def bird_data():
                 result['warnings'].append('Unexpected Bird feed host for '+key)
                 continue
             try:
-                doc=cached('bird:'+key,75 if key=='free_bike_status' else 300,lambda:fetch_json(url))
+                doc=cached('bird:'+key,75 if key=='free_bike_status' else 300,lambda:fetch_json(url,timeout=7))
                 if target=='stations':
                     for s in items(doc,'stations'):
                         if isinstance(s,dict) and isinstance(s.get('lat'),(int,float)) and isinstance(s.get('lon'),(int,float)):
@@ -82,6 +83,7 @@ def bird_data():
                     result['vehicles']=[{'lat':s['lat'],'lon':s['lon']} for s in (items(doc,'bikes') or items(doc,'vehicles')) if isinstance(s,dict) and isinstance(s.get('lat'),(int,float)) and isinstance(s.get('lon'),(int,float))][:1800]
                 else:
                     result['zones']=normalize_bird_zones(doc)
+                    result['bird_zones_loaded']=any(z.get('properties',{}).get('kind')=='no_ride' for z in result['zones'])
             except Exception as exc:
                 result['warnings'].append('Bird '+key+': '+api_error(exc))
     except Exception as exc:
@@ -114,11 +116,11 @@ def normalize_bird_zones(doc):
 def city_data():
     data={'stations':[],'zones':[],'sources':[],'warnings':[]}
     try:
-        meta=cached('citylayers',3600,lambda:fetch_json(CITY+'?f=json'))
+        meta=cached('citylayers',3600,lambda:fetch_json(CITY+'?f=json',timeout=7))
         layers=meta.get('layers',[])
         if not isinstance(layers,list):raise ValueError('City API has no layer list')
         data['sources'].append('City of Ottawa E-Scooter GIS')
-        for layer in layers:
+        for layer in layers[:35]:
             name=str(layer.get('name','')); name_l=name.lower()
             kind=None
             if any(v in name_l for v in ('no ride','no-ride','no riding','no riding zone')):kind='no_ride'
@@ -128,7 +130,7 @@ def city_data():
             if kind is None:continue
             try:
                 url=CITY+'/'+str(layer['id'])+'/query?'+urlencode({'where':'1=1','outFields':'*','returnGeometry':'true','outSR':'4326','f':'geojson','resultRecordCount':2000})
-                j=cached('city:'+str(layer['id']),3600,lambda:fetch_json(url,timeout=18,size=12_000_000))
+                j=cached('city:'+str(layer['id']),3600,lambda:fetch_json(url,timeout=7,size=12_000_000))
                 for feature in j.get('features',[]):
                     g=feature.get('geometry') or {}
                     if kind=='parking' and g.get('type')=='Point':
@@ -149,8 +151,12 @@ def city_data():
     return data
 
 def full_data():
-    bird=bird_data()
-    city=city_data()
+    # Fetch unrelated providers in parallel to keep a cold Render request responsive.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        bird_future=pool.submit(bird_data)
+        city_future=pool.submit(city_data)
+        bird=bird_future.result()
+        city=city_future.result()
     if not bird['stations']:bird['stations']=city['stations']
     # Never replace Bird no-ride zones with a partial invented polygon set; keep both official sources.
     seen=set()
@@ -159,7 +165,8 @@ def full_data():
         if key not in seen:bird['zones'].append(z);seen.add(key)
     bird['sources']+=city['sources']
     bird['warnings']+=city['warnings']
-    bird['status']='ready' if bird['stations'] and any(z['properties']['kind']=='no_ride' for z in bird['zones']) else 'partial'
+    # The city-only map never certifies a Bird route if Bird's own exclusions are missing.
+    bird['status']='ready' if bird['stations'] and bird['bird_zones_loaded'] else 'partial'
     bird['checked_at']=int(time.time())
     return bird
 
