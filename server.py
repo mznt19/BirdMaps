@@ -53,6 +53,30 @@ class Handler(BaseHTTPRequestHandler):
             except HTTPError as e:return self.send_json({'server':'ok','bird':'error','http_status':e.code,'detail':'Bird denied the upstream request'},502)
             except (TimeoutError,URLError) as e:return self.send_json({'server':'ok','bird':'error','detail':str(e)[:300]},502)
             except Exception as e:return self.send_json({'server':'ok','bird':'error','detail':type(e).__name__+': '+str(e)[:240]},502)
+        if p.path=='/api/bird':
+            kind=parse_qs(p.query).get('kind',[''])[0]
+            names={'discovery':'gbfs.json','geofences':'geofencing_zones.json','stations':'station_information.json','vehicles':'free_bike_status.json'}
+            if kind not in names:return self.send_json({'error':'Unknown Ottawa Bird feed type'},400)
+            target='https://mds.bird.co/gbfs/v2/public/ottawa/'+names[kind]
+            hit=CACHE.get(target);now=time.time()
+            if hit and now-hit[0]<(45 if kind=='vehicles' else 300):return self.send_json(hit[1])
+            try:
+                request=Request(target,headers={'User-Agent':'BirdMapsOttawa/0.5 (GBFS reader)','Accept':'application/json'})
+                with urlopen(request,timeout=12) as response:
+                    raw=response.read(8000001)
+                    if len(raw)>8000000:raise ValueError('Upstream payload exceeds 8 MB')
+                    obj=json.loads(raw)
+                CACHE[target]=(time.time(),obj)
+                return self.send_json(obj)
+            except HTTPError as e:
+                print('Bird '+kind+' returned '+str(e.code),flush=True)
+                return self.send_json({'error':'Bird upstream returned HTTP '+str(e.code),'feed':kind,'source':'mds.bird.co'},502)
+            except (URLError,TimeoutError) as e:
+                print('Bird '+kind+' connection failed: '+str(e),flush=True)
+                return self.send_json({'error':'Bird upstream connection failed: '+str(e)[:120],'feed':kind},502)
+            except Exception as e:
+                print('Bird '+kind+' error: '+str(e),flush=True)
+                return self.send_json({'error':'Bird feed could not be decoded: '+type(e).__name__,'feed':kind},502)
         if p.path!='/api/request':return self.send_json({'error':'Unknown endpoint'},404)
         target=parse_qs(p.query).get('url',[''])[0];u=urlparse(target)
         if u.scheme!='https' or u.hostname not in ALLOWED or u.port not in (None,443) or not any(u.path.startswith(path) for path in ALLOWED.get(u.hostname,())) or u.username or u.password:return self.send_json({'error':'URL not approved'},400)
