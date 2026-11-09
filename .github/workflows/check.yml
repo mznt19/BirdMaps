@@ -1,4 +1,4 @@
-name: BirdMaps smoke tests
+name: BirdMaps checks
 on:
   push:
     branches: [main]
@@ -11,17 +11,34 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Check Python and browser JavaScript syntax
+      - name: Compile backend and extract browser code
         run: |
           python -m py_compile server.py routing.py
-          node -e "const fs=require('fs');const vm=require('vm');const html=fs.readFileSync('index.html','utf8');const blocks=[...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)].map(m=>m[1]).filter(Boolean);if(!blocks.length)throw Error('No inline JS');for(const block of blocks)new vm.Script(block);console.log('Browser scripts parse successfully')"
-      - name: Start server and check API
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path('index.html').read_text()
+          scripts=re.findall(r'<script\b[^>]*>(.*?)</script>',html,re.S|re.I)
+          scripts=[x for x in scripts if x.strip()]
+          assert scripts, 'Inline browser JS missing'
+          Path('/tmp/birdmaps-app.js').write_text('\n'.join(scripts))
+          PY
+          node --check /tmp/birdmaps-app.js
+      - name: API smoke test
         run: |
-          PORT=18765 python server.py > /tmp/birdmaps-server.log 2>&1 &
-          echo $! > /tmp/birdmaps-server.pid
-          sleep 2
-          curl --fail --max-time 10 http://127.0.0.1:18765/api/health
-          curl --fail --max-time 10 http://127.0.0.1:18765/ -o /tmp/birdmaps-home.html
+          PORT=18765 python server.py >/tmp/birdmaps.log 2>&1 &
+          sleep 3
+          curl -fsS --max-time 10 http://127.0.0.1:18765/api/health
+          curl -fsS --max-time 10 http://127.0.0.1:18765/ -o /tmp/birdmaps-home.html
           grep -q "BirdMaps" /tmp/birdmaps-home.html
-          test "$(curl -s -o /tmp/birdmaps-bad.json -w '%{http_code}' 'http://127.0.0.1:18765/api/bird?kind=invalid')" = 400
-          cat /tmp/birdmaps-bad.json
+          test "$(curl -s -o /tmp/invalid.json -w '%{http_code}' http://127.0.0.1:18765/api/unknown)" = 404
+      - name: Verify geofence blocks a route edge
+        run: |
+          python - <<'PY'
+          import routing
+          polygon=[[[ -75.7000,45.4200],[-75.6950,45.4200],[-75.6950,45.4250],[-75.7000,45.4250],[-75.7000,45.4200]]]
+          p=routing.prepare([polygon])
+          assert routing.blocked((45.421,-75.701),(45.421,-75.694),p)
+          assert not routing.blocked((45.419,-75.701),(45.419,-75.694),p)
+          print('Geofence geometry checks passed')
+          PY
