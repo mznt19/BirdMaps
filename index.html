@@ -68,7 +68,12 @@ async function directSearch(q){
 }
 async function lookup(q){
  try{const j=await api('/api/search?q='+encodeURIComponent(q));if(j.items?.length)return j.items}catch(err){console.warn('Address backend unavailable',err)}
- return directSearch(q);
+ try{const items=await directSearch(q);if(items.length)return items}catch(err){console.warn('Photon unavailable',err)}
+ const url='https://nominatim.openstreetmap.org/search?'+new URLSearchParams({q:q+', Ottawa, Ontario, Canada',format:'json',limit:'7',countrycodes:'ca'});
+ const response=await fetch(url);
+ if(!response.ok)throw Error('Both public address providers are unavailable');
+ const places=await response.json();
+ return places.map(p=>({label:p.display_name,lat:+p.lat,lon:+p.lon})).filter(p=>inOttawa([p.lat,p.lon]));
 }
 function setAutocomplete(id){
  const inp=$(id),list=$(id+'-list');let timer,seq=0,items=[];
