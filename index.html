@@ -1,162 +1,174 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#131922"><title>BirdMaps — scooter-aware navigation</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#13191d">
+<title>BirdMaps · Ottawa scooter navigator</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-:root{color-scheme:dark;--bg:#101720;--panel:#1b2531;--line:#354252;--text:#eff6fc;--muted:#a6b4c3;--accent:#fbd444;--green:#4de0ab;--red:#fa7580}*{box-sizing:border-box}body{margin:0;font:15px system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text)}#map{position:fixed;inset:0;z-index:0}.leaflet-container{background:#192431}.leaflet-control-attribution{font-size:10px!important}.header{position:absolute;z-index:1000;left:14px;top:14px;display:flex;align-items:center;gap:9px;padding:11px 14px;background:var(--bg);border:1px solid var(--line);border-radius:15px;box-shadow:0 4px 25px #0008}.logo{background:var(--accent);color:#111a22;border-radius:9px;padding:5px 9px;font-weight:950;font-size:19px}.brand{font-weight:850;font-size:20px;letter-spacing:-.7px}.sub{font-size:10px;color:var(--muted)}.panel{position:absolute;left:14px;top:93px;bottom:15px;width:min(390px,calc(100vw - 28px));z-index:990;overflow-y:auto;background:rgba(16,23,32,.97);border:1px solid var(--line);border-radius:17px;box-shadow:0 15px 40px #0009;padding:17px}h1{font-size:17px;margin:0 0 14px}label{display:block;color:var(--muted);font-size:12px;font-weight:700;margin:12px 0 5px}input{width:100%;border:1px solid var(--line);border-radius:10px;background:#263443;color:var(--text);padding:12px;font-size:14px;outline:none}input:focus{border-color:var(--accent)}.buttons{display:flex;gap:7px}.btn{border:1px solid var(--line);background:#273747;color:var(--text);border-radius:10px;padding:11px 10px;cursor:pointer;font-weight:700;flex:1}.btn.primary{background:var(--accent);color:#161d22;border-color:var(--accent)}.btn:disabled{opacity:.5;cursor:wait}.tiny{padding:7px 10px;font-size:12px}.mode{padding:13px;border:1px solid var(--line);border-radius:12px;margin-top:9px;cursor:pointer;display:flex;gap:10px;align-items:flex-start;background:#202b38}.mode.active{border-color:var(--accent);background:#343629}.mode input{width:auto;margin:3px}.mode strong{display:block;font-size:14px}.mode small{display:block;color:var(--muted);line-height:1.4;margin-top:3px}.status{font-size:12px;line-height:1.5;color:var(--muted);padding:11px 12px;margin-top:12px;border-radius:10px;background:#263340;white-space:pre-wrap}.status.error{color:#ffd3d6;background:#512c36}.status.good{color:#a1f2d2;background:#1f403e}.statrow{display:flex;gap:8px;margin-top:12px}.stat{flex:1;min-width:0;text-align:center;border:1px solid var(--line);padding:9px 5px;border-radius:9px}.stat b{display:block;font-size:18px}.stat small{color:var(--muted);font-size:10px}.line{border-top:1px solid var(--line);margin:15px 0}.foot{font-size:11px;color:var(--muted);line-height:1.5}.legend{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--muted);margin-top:12px}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:3px}.routecard{background:#263340;border-radius:11px;padding:12px;margin-top:11px;line-height:1.55;font-size:13px}.routecard b{color:var(--accent)}.note{font-size:12px;color:var(--muted);margin-top:9px}.dock-icon{background:#fbd444;border-radius:50%;width:23px;height:23px;line-height:23px;text-align:center;font-size:13px;border:2px solid #1b2531;color:#111}.user-icon{background:#41dcb1;border:3px solid white;border-radius:50%;width:16px;height:16px}.dest-icon{background:#fa7580;border:3px solid white;border-radius:50%;width:17px;height:17px}@media(max-width:700px){.header{top:8px;left:8px;padding:7px 10px}.panel{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-height:61vh;padding:13px;border-radius:15px}.panel h1{margin-bottom:6px}.leaflet-top.leaflet-right{top:65px}}
-.suggestwrap{position:relative;flex:1}.suggestions{position:absolute;top:calc(100% + 5px);left:0;right:0;background:#243445;border:1px solid #586a7b;border-radius:10px;z-index:1500;box-shadow:0 12px 35px #000a;max-height:260px;overflow:auto}.suggestions[hidden]{display:none}.suggestion{display:block;width:100%;border:0;border-bottom:1px solid #405165;background:transparent;color:#eff6fc;text-align:left;padding:11px 12px;cursor:pointer;font:inherit;font-size:12px;line-height:1.4}.suggestion:hover,.suggestion:focus{background:#415366;outline:none}.suggestion .smaller{color:#b7c6d5;font-size:11px}.settings{margin:13px 0;border-top:1px solid #354252;padding-top:12px}.settings summary{cursor:pointer;color:#fbd444;font-weight:700;font-size:12px}.settings input{font-size:12px}#origin,#destination{width:100%}@media(max-width:700px){.suggestions{max-height:180px}}
-</style></head><body><div id="map"></div><div class="header"><div class="logo">B</div><div><div class="brand">BirdMaps</div><div class="sub">Scooter-friendly directions · independent prototype</div></div></div>
-<section class="panel"><h1>Plan a Bird ride</h1><p class="foot" style="margin-top:-6px;color:#4de0ab">Ottawa • Live address suggestions via BirdMaps server</p><label for="origin">Starting point</label><div class="buttons"><div class="suggestwrap" style="flex:1;min-width:0"><input id="origin" autocomplete="off" placeholder="Address or choose my location" value="Parliament Hill, Ottawa"><div id="origin-suggestions" class="suggestions" role="listbox" hidden></div></div><button class="btn tiny" id="locate" style="flex:0 0 auto" title="Use your location">◎</button></div><label for="destination">Destination</label><div class="suggestwrap"><input id="destination" autocomplete="off" placeholder="Start typing an Ottawa address"><div id="destination-suggestions" class="suggestions" role="listbox" hidden></div></div><div class="mode active" id="mode-address"><input type="radio" name="mode" value="address" checked><div><strong>Map to address</strong><small>Find a Bird parking point near the address, route around no-ride zones, then walk the remaining distance.</small></div></div><div class="mode" id="mode-dock"><input type="radio" name="mode" value="dock"><div><strong>Map to closest Bird parking point</strong><small>Find the nearest published Bird parking points and route around no-ride zones, then walk to your destination.</small></div></div><div class="buttons" style="margin-top:13px"><button id="navigate" class="btn primary">Find route</button><button id="clear" class="btn">Clear</button></div><div id="routecard"></div><div class="line"></div><h1>Bird live data <span style="font-size:11px;color:#4de0ab">Ottawa selected</span></h1><label for="feed">Bird GBFS city feed</label><input id="feed" value="Ottawa (Bird official GBFS)" readonly aria-label="Ottawa Bird feed"><div class="buttons" style="margin-top:9px"><button id="load" class="btn primary">Load Bird zones & parking</button><button id="refresh" class="btn">Refresh</button></div><div class="statrow"><div class="stat"><b id="stationCount">0</b><small>Parking points</small></div><div class="stat"><b id="zoneCount">0</b><small>Geofence areas</small></div><div class="stat"><b id="scooterCount">0</b><small>Available vehicles</small></div></div><div class="legend"><span><i class="dot" style="background:#fbd444"></i>Parking</span><span><i class="dot" style="background:#fa7580"></i>No ride</span><span><i class="dot" style="background:#fcaa47"></i>No parking</span><span><i class="dot" style="background:#66a5f5"></i>Speed limited</span></div><div class="status" id="status">Connecting to Ottawa Bird feed through BirdMaps server…</div><button class="btn" id="diagnose" style="margin-top:8px;width:100%">Test server & Bird connection</button><div id="diagnostic" class="status" style="display:none"></div><details class="settings"><summary>Address autocomplete settings</summary><p class="foot">Live suggestions work using OpenStreetMap-based search routed through BirdMaps server. Canada Post AddressComplete requires your own API key (and may require hosting the app on an approved domain).</p><label for="cpkey">Canada Post AddressComplete key (optional)</label><input id="cpkey" placeholder="Paste your Canada Post API key" autocomplete="off"><button class="btn tiny" id="savecp" style="margin-top:8px">Use Canada Post autocomplete</button><div class="note" id="addresssource">Source: OpenStreetMap / Photon</div></details><p class="foot">BirdMaps is not affiliated with Bird. Bird markets may be dockless; “closest dock” means the closest published parking station or virtual hub, if one exists. Live scooter rules in the official Bird app remain authoritative. Routing blocks OSM road segments crossing published no-ride zones. Other local riding restrictions may not appear in the feed.</p></section>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script><script>
-const $=id=>document.getElementById(id), map=L.map('map',{zoomControl:false}).setView([45.4215,-75.6972],13);L.control.zoom({position:'topright'}).addTo(map);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-const zoneLayer=L.layerGroup().addTo(map),stationLayer=L.layerGroup().addTo(map),scooterLayer=L.layerGroup().addTo(map),routeLayer=L.layerGroup().addTo(map),pinLayer=L.layerGroup().addTo(map);let stations=[],zones=[],vehicles=[],lastFeed='',geolocation=null,mode='address'; const picked={origin:null,destination:null}; let cpKey='';
-const ico=(cls)=>L.divIcon({className:'',html:`<div class="${cls}"></div>`,iconSize:[23,23],iconAnchor:[11,11]});function status(s,type=''){const el=$('status');el.textContent=s;el.className='status '+type}function round(n){return Math.round(n)}function distance(a,b){let R=6371000,p=Math.PI/180,dlat=(b[0]-a[0])*p,dlon=(b[1]-a[1])*p;let x=Math.sin(dlat/2)**2+Math.cos(a[0]*p)*Math.cos(b[0]*p)*Math.sin(dlon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}function fmt(m){return m<1000?`${round(m)} m`:`${(m/1000).toFixed(1)} km`}function urlSafe(s){return /^https:\/\//i.test(s)}function feedURL(v){v=v.trim();if(urlSafe(v))return v;return `https://mds.bird.co/gbfs/v2/public/${encodeURIComponent(v)}/gbfs.json`};async function getJSON(url){
- const endpoint='/api/request?url='+encodeURIComponent(url);
- let last;
- for(let attempt=0;attempt<3;attempt++){
-  try{
-   const controller=new AbortController();
-   const timer=setTimeout(()=>controller.abort(),attempt===0?14000:24000);
-   let r;
-   try{r=await fetch(endpoint,{headers:{Accept:'application/json'},signal:controller.signal,cache:'no-store'});}
-   finally{clearTimeout(timer)}
-   const j=await r.json().catch(()=>null);
-   if(r.ok&&j!==null)return j;
-   const message=j?.error||`BirdMaps proxy HTTP ${r.status}`;
-   if(r.status<500&&r.status!==429)throw Error(message);
-   last=Error(message);
-  }catch(e){last=e;if(/HTTP 4[0-9][0-9]|not approved/i.test(e.message))break;}
-  if(attempt<2)await new Promise(resolve=>setTimeout(resolve,1200*(attempt+1)));
- }
- // Only public geocoding can fall back to a direct browser request. Never use this for Bird geofences.
- if(/^https:\/\/photon\.komoot\.io\/api\//.test(url)){
-  try{const r=await fetch(url,{headers:{Accept:'application/json'}});if(r.ok)return await r.json()}catch(_){}
- }
- throw Error('BirdMaps proxy request failed for '+new URL(url).hostname+': '+(last?.message||'server unavailable')+'. Check /api/health.');
+:root{color-scheme:dark;--bg:#101719;--card:#1a2428;--line:#344247;--text:#eff8f6;--muted:#9db3b4;--bird:#f5d446;--green:#44d7af;--red:#ff7f8b;--blue:#82b4ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);font-size:14px}button,input{font:inherit}#map{position:fixed;inset:0;background:#223334}.leaflet-container{background:#243334}
+.brand{position:absolute;left:17px;top:17px;z-index:1001;background:var(--bg);border:1px solid var(--line);border-radius:17px;display:flex;align-items:center;gap:10px;padding:10px 14px;box-shadow:0 10px 32px #0006}
+.bmark{width:39px;height:39px;border-radius:12px;background:var(--bird);color:#111;font-size:23px;font-weight:950;display:grid;place-items:center}
+.brand b{font-size:20px;letter-spacing:-.7px}.brand small{display:block;color:var(--muted);font-size:10px;margin-top:1px}
+.panel{position:absolute;z-index:1000;top:95px;left:17px;bottom:15px;overflow-y:auto;width:min(390px,calc(100vw - 34px));padding:17px;background:#10191df2;backdrop-filter:blur(15px);border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 35px #0008}
+h1{font-size:17px;margin:0 0 3px}p{line-height:1.5}.lead{font-size:12px;color:var(--muted);margin:0 0 12px}
+label{display:block;color:#c2d4d2;font-size:12px;font-weight:700;margin:13px 0 6px}
+.field{position:relative}.field input{width:100%;height:43px;background:#253439;border:1px solid #43545a;color:#fff;border-radius:10px;padding:10px 13px;outline:0}.field input:focus{border-color:var(--bird)}.row{display:flex;gap:8px;align-items:stretch}
+button{cursor:pointer;border:1px solid #3d5054;border-radius:10px;background:#2a393e;color:var(--text);padding:11px 14px;font-weight:750}button:disabled{opacity:.55;cursor:not-allowed}.primary{background:var(--bird);border-color:var(--bird);color:#111b1f}.row button{flex:1}
+.list{position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:1900;border-radius:9px;background:#243338;border:1px solid #536568;box-shadow:0 10px 30px #000b;max-height:210px;overflow:auto}.list[hidden]{display:none}.suggestion{display:block;width:100%;border:0;border-bottom:1px solid #3d4b4d;border-radius:0;text-align:left;font-size:12px;padding:10px;background:transparent;font-weight:500}.suggestion:hover,.suggestion:focus{background:#425358}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}.choice{border:1px solid var(--line);border-radius:11px;padding:10px;cursor:pointer;background:#1e2b30}.choice.selected{border-color:var(--bird);background:#393828}.choice input{accent-color:#f5d446}.choice b{display:block;margin:4px 0;font-size:12px}.choice small{color:var(--muted);line-height:1.45}
+.heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pill{font-size:10px;border:1px solid #536265;border-radius:50px;color:#c2d4d2;padding:5px 8px;white-space:nowrap}.pill.ok{color:#aaf4d9;border-color:#276a53}.pill.bad{color:#ffd1d3;border-color:#8f5360}
+.section{border-top:1px solid var(--line);margin-top:18px;padding-top:15px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}.stat{padding:10px 5px;text-align:center;border-radius:10px;border:1px solid var(--line)}.stat b{font-size:19px;display:block}.stat small{font-size:10px;color:var(--muted)}
+.notice{border:1px solid #35494b;border-radius:11px;background:#243337;padding:11px 12px;font-size:12px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}.notice.warn{background:#43362a;border-color:#765b40}.notice.error{background:#493039;border-color:#805360}.notice.good{background:#1e3c35;border-color:#346b59}
+.routeinfo{margin-top:10px;border-radius:12px;background:#22343a;padding:12px;line-height:1.6}.routeinfo strong{color:var(--bird)}
+.tiny{font-size:11px;color:var(--muted);line-height:1.5}.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin:9px 0}.dot{width:10px;height:10px;border-radius:100%;display:inline-block;margin-right:4px}
+details{margin-top:12px}details summary{cursor:pointer;font-weight:700;color:var(--bird);font-size:12px}details a{color:var(--blue)}
+.marker{width:20px;height:20px;border-radius:50%;background:var(--bird);border:3px solid #182322;box-shadow:0 2px 7px #0008}
+@media(max-width:700px){.brand{top:8px;left:8px;padding:6px 9px}.brand b{font-size:17px}.bmark{width:30px;height:30px;font-size:19px}.panel{left:8px;bottom:8px;top:auto;width:calc(100vw - 16px);max-height:61vh;padding:12px;border-radius:15px}.leaflet-top.leaflet-right{top:58px}}
+</style></head><body>
+<div id="map" aria-label="Interactive Ottawa map"></div>
+<div class="brand"><div class="bmark">B</div><div><b>BirdMaps</b><small>Ottawa · independent scooter navigator</small></div></div>
+<main class="panel">
+<div class="heading"><h1>Plan a ride</h1><span class="pill" id="api-state">Connecting</span></div>
+<p class="lead">Choose where to go. We’ll find permitted parking and avoid published no-ride zones where verified data is available.</p>
+<label for="origin">Starting point</label><div class="row"><div class="field" style="flex:1;min-width:0"><input id="origin" autocomplete="off" placeholder="Starting address" value="Ottawa City Hall"><div id="origin-list" class="list" hidden></div></div><button id="locate" title="Use current location" style="flex:0 0 44px;padding:8px">◎</button></div>
+<label for="destination">Destination</label><div class="field"><input id="destination" autocomplete="off" placeholder="e.g. 100 Queen Street, Ottawa"><div id="destination-list" class="list" hidden></div></div>
+<div class="options"><label class="choice selected"><input type="radio" name="mode" value="address" checked><b>Map to address</b><small>Ride to a nearby permitted parking point, then walk.</small></label><label class="choice"><input type="radio" name="mode" value="parking"><b>Closest parking</b><small>Prioritize the nearest designated scooter parking spot.</small></label></div>
+<div class="row"><button class="primary" id="go">Find route</button><button id="clear">Clear</button></div>
+<div id="routeinfo"></div>
+<section class="section"><div class="heading"><h1>Ottawa scooter data</h1><button id="refresh" style="padding:6px 8px;font-size:11px">Refresh</button></div>
+<div class="stats"><div class="stat"><b id="parking-count">—</b><small>Parking points</small></div><div class="stat"><b id="zone-count">—</b><small>Geofence areas</small></div><div class="stat"><b id="vehicle-count">—</b><small>Bird scooters</small></div></div>
+<div class="legend"><span><i class="dot" style="background:#f5d446"></i>Parking</span><span><i class="dot" style="background:#ff7f8b"></i>No ride</span><span><i class="dot" style="background:#ffbb76"></i>No park</span><span><i class="dot" style="background:#83b5ff"></i>Slow</span></div>
+<div class="notice" id="data-state">Loading Ottawa data…</div>
+<details><summary>Data sources and troubleshooting</summary><p class="tiny" id="sources"></p><p class="tiny">Only designated Bird or City of Ottawa scooter parking areas count. A regular car park is not a scooter dock. No ride is not the same as no parking.</p><p class="tiny">Roads, bike lanes, sidewalks, NCC pathways and actual operator restrictions require checking. BirdMaps is not affiliated with Bird.</p><div class="tiny"><a href="/api/health" target="_blank">Check API health</a> · <a href="/api/data" target="_blank">Inspect loaded data</a></div></details>
+</section></main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const map=L.map('map',{zoomControl:false}).setView([45.4215,-75.6972],13);
+L.control.zoom({position:'topright'}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
+const parkingLayer=L.layerGroup().addTo(map), zoneLayer=L.layerGroup().addTo(map), routeLayer=L.layerGroup().addTo(map);
+let data={stations:[],zones:[],vehicles:[],status:'partial'},selected={},geo=null,busy=false;
+const distance=(a,b)=>{const toRad=x=>x*Math.PI/180;const dlat=toRad(a[0]-b[0]),dlon=toRad(a[1]-b[1]);const q=Math.sin(dlat/2)**2+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dlon/2)**2;return 12742000*Math.asin(Math.min(1,Math.sqrt(q)))};
+const fmt=m=>m<1000?Math.round(m)+' m':(m/1000).toFixed(1)+' km';
+const inOttawa=p=>p&&p[0]>45.2&&p[0]<45.6&&p[1]>-76.1&&p[1]<-75.3;
+function note(id,msg,level=''){const e=$(id);e.textContent=msg;e.className='notice '+level}
+async function api(url,opts={}){
+ const timer=new AbortController(),timeout=setTimeout(()=>timer.abort(),30000);
+ try{const r=await fetch(url,{cache:'no-store',signal:timer.signal,...opts});const j=await r.json();if(!r.ok)throw Error(j.error||'HTTP '+r.status);return j}
+ finally{clearTimeout(timeout)}
 }
-function entries(j){if(Array.isArray(j?.data?.feeds))return j.data.feeds;if(j?.data&&typeof j.data==='object'){for(let v of Object.values(j.data))if(Array.isArray(v?.feeds))return v.feeds}return []}function unwrap(j,key){if(Array.isArray(j?.data?.[key]))return j.data[key];if(Array.isArray(j?.[key]))return j[key];return []}function point(x){if(Number.isFinite(+x?.lat)&&Number.isFinite(+x?.lon))return [+x.lat,+x.lon];if(Number.isFinite(+x?.latitude)&&Number.isFinite(+x?.longitude))return [+x.latitude,+x.longitude];return null}
-function geometries(raw){if(!raw)return [];if(raw.type==='FeatureCollection')return raw.features||[];if(raw.type==='Feature')return [raw];if(raw.type==='Polygon'||raw.type==='MultiPolygon')return [{type:'Feature',geometry:raw,properties:{}}];if(Array.isArray(raw))return raw.flatMap(geometries);return []}function normalizeZones(j){let z=unwrap(j,'geofencing_zones');if(!z.length)z=j?.data?.geofencing_zones?.features||j?.data?.geofencing_zones?.features||[];let list=[];for(let item of z){let fs=geometries(item.geometry||item);if(!fs.length&&item.geojson)fs=geometries(item.geojson);for(let f of fs){let p={...(item.properties||{}),...(f.properties||{})};let rules=p.rules||item.rules||[];let types=rules.flatMap(r=>r.vehicle_type_ids||[]);let noRide=rules.some(r=>r.ride_allowed===false||r.ride_through_allowed===false)||p.ride_allowed===false||p.ride_through_allowed===false;let noPark=rules.some(r=>r.parking_allowed===false)||p.parking_allowed===false;let slow=rules.some(r=>r.maximum_speed_kph!=null||r.max_speed_kph!=null)||p.maximum_speed_kph!=null;let kind=noRide?'no-ride':noPark?'no-parking':slow?'slow':'other';list.push({feature:f,kind,properties:p,types})}}return list}
-function drawZones(){zoneLayer.clearLayers();for(let z of zones){let c=z.kind==='no-ride'?'#fa7580':z.kind==='no-parking'?'#fcaa47':z.kind==='slow'?'#66a5f5':'#af92dc';L.geoJSON(z.feature,{style:{color:c,fillColor:c,fillOpacity:.16,weight:2}}).bindPopup(`${z.kind.replace('-',' ').toUpperCase()}<br>From published feed; check Bird app`).addTo(zoneLayer)}}function drawStations(){stationLayer.clearLayers();for(let s of stations){L.marker(s.p,{icon:ico('dock-icon')}).bindPopup(`<strong>${esc(s.name)}</strong><br>Published Bird parking point<br><button onclick="window.pickStation('${encodeURIComponent(s.id)}')">Directions here</button>`).addTo(stationLayer)}}function drawVehicles(){scooterLayer.clearLayers();for(let v of vehicles.slice(0,2500)){L.circleMarker(v.p,{radius:4,color:'#2cddb1',fillColor:'#2cddb1',fillOpacity:.65,weight:1}).bindPopup('Available Bird vehicle (feed)').addTo(scooterLayer)}}function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-async function getBird(kind){
- let last;
- for(let attempt=0;attempt<2;attempt++){
-  let controller=new AbortController(),timer=setTimeout(()=>controller.abort(),attempt?25000:17000);
-  try{
-   const response=await fetch('/api/bird?kind='+encodeURIComponent(kind),{cache:'no-store',signal:controller.signal,headers:{Accept:'application/json'}});
-   const raw=await response.text();
-   let data;try{data=JSON.parse(raw)}catch(e){throw Error('Server sent a non-JSON response (HTTP '+response.status+')')}
-   if(!response.ok)throw Error(data.error||'Bird data HTTP '+response.status);
-   return data;
-  }catch(e){
-   last=e;
-   if(/Bird upstream|HTTP 4|HTTP 5|non-JSON/i.test(e.message))break;
-   if(attempt===0)await new Promise(r=>setTimeout(r,1300));
-  }finally{clearTimeout(timer)}
+async function directSearch(q){
+ const url='https://photon.komoot.io/api/?'+new URLSearchParams({q:q+', Ottawa',limit:'7',lat:'45.4215',lon:'-75.6972'});
+ const r=await fetch(url);if(!r.ok)throw Error('Address source HTTP '+r.status);
+ const j=await r.json();
+ return (j.features||[]).map(f=>{const p=f.properties||{},co=f.geometry?.coordinates||[];return {lat:co[1],lon:co[0],label:[p.name,p.housenumber,p.street,p.city,p.state].filter(Boolean).join(', ')}}).filter(p=>inOttawa([p.lat,p.lon]));
+}
+async function lookup(q){
+ try{const j=await api('/api/search?q='+encodeURIComponent(q));if(j.items?.length)return j.items}catch(err){console.warn('Address backend unavailable',err)}
+ return directSearch(q);
+}
+function setAutocomplete(id){
+ const inp=$(id),list=$(id+'-list');let timer,seq=0,items=[];
+ function close(){list.hidden=true;list.replaceChildren()}
+ function pick(x){selected[id]=[x.lat,x.lon];inp.value=x.label;close();if(id==='destination')map.setView(selected[id],15)}
+ inp.addEventListener('input',()=>{delete selected[id];if(id==='origin')geo=null;clearTimeout(timer);const q=inp.value.trim(),n=++seq;if(q.length<3){close();return}
+  timer=setTimeout(async()=>{try{
+   const results=await lookup(q);
+   if(n!==seq||document.activeElement!==inp)return;
+   items=results;list.replaceChildren();
+   if(!items.length){const d=document.createElement('div');d.className='suggestion';d.textContent='No Ottawa addresses found';list.append(d)}
+   else items.forEach(x=>{const b=document.createElement('button');b.type='button';b.className='suggestion';b.textContent=x.label;b.addEventListener('mousedown',e=>e.preventDefault());b.addEventListener('click',()=>pick(x));list.append(b)});
+   list.hidden=false;
+  }catch(e){if(n!==seq)return;const d=document.createElement('div');d.className='suggestion';d.textContent='Address lookup unavailable: '+e.message;list.replaceChildren(d);list.hidden=false}},350);
+ });
+ inp.addEventListener('keydown',e=>{if(e.key==='Escape')close();if(e.key==='Enter'&&!list.hidden&&items.length){e.preventDefault();pick(items[0])}});
+ inp.addEventListener('blur',()=>setTimeout(close,180));
+}
+setAutocomplete('origin');setAutocomplete('destination');
+function renderData(){
+ parkingLayer.clearLayers();zoneLayer.clearLayers();
+ for(const f of data.zones){
+  const kind=f.properties?.kind||'other';
+  const style=kind==='no_ride'?{color:'#ee6475',fillColor:'#ee6475',fillOpacity:.23,weight:1.5}:
+   kind==='no_park'?{color:'#e7a553',fillColor:'#e7a553',fillOpacity:.18,weight:1.5}:
+   kind==='slow'?{color:'#7aa7f4',fillColor:'#7aa7f4',fillOpacity:.13,weight:1}:{color:'#aaa',fillOpacity:0,weight:0};
+  try{L.geoJSON(f,{style}).bindPopup(esc(kind.replace('_',' '))+' · '+esc(f.properties?.source||'Unknown')).addTo(zoneLayer)}catch(e){console.warn(e)}
  }
- throw Error(last?.message||'Unable to contact BirdMaps server');
+ data.stations.forEach(s=>{if(!inOttawa([s.lat,s.lon]))return;
+  L.circleMarker([s.lat,s.lon],{radius:6,weight:2,color:'#212d2d',fillColor:'#f5d446',fillOpacity:1})
+   .bindPopup('<b>'+esc(s.name||'Scooter parking')+'</b><br>'+esc(s.source||'')).addTo(parkingLayer)});
+ $('parking-count').textContent=data.stations.length;$('zone-count').textContent=data.zones.length;$('vehicle-count').textContent=data.vehicles.length;
+ $('sources').textContent='Sources: '+(data.sources||[]).join(', ')+'. '+(data.warnings||[]).join(' | ');
+ const n=data.zones.filter(f=>f.properties?.kind==='no_ride').length;
+ if(data.status==='ready')note('data-state',data.stations.length+' published parking spots and '+n+' no-ride zones loaded. Always confirm current restrictions in Bird.','good');
+ else note('data-state','Some Ottawa scooter data is unavailable. '+data.stations.length+' parking spots and '+n+' no-ride zones loaded. Geofence-avoiding routes are disabled until both are available.\n'+(data.warnings||[]).join('\n'),'warn');
 }
-async function loadFeed(){
- $('load').disabled=true;lastFeed='ottawa';
- status('Checking Ottawa Bird parking and geofence feeds…');
- const jobs=await Promise.all([['stations','stations'],['geofences','geofences'],['vehicles','vehicles']].map(async ([name,kind])=>{
-  try{return {name,data:await getBird(kind)}}catch(e){return {name,error:e.message}}
- }));
- const errors=[];stations=[];zones=[];vehicles=[];
- for(const r of jobs){
-  if(r.error){errors.push(r.name+': '+r.error);continue}
-  if(r.name==='stations')stations=unwrap(r.data,'stations').map(st=>({id:String(st.station_id??st.id??''),name:st.name||'Bird parking location',p:point(st)})).filter(st=>st.p);
-  if(r.name==='geofences')zones=normalizeZones(r.data);
-  if(r.name==='vehicles')vehicles=unwrap(r.data,'bikes').concat(unwrap(r.data,'vehicles')).map(v=>({p:point(v)})).filter(v=>v.p);
- }
- drawZones();drawStations();drawVehicles();
- $('stationCount').textContent=stations.length;$('zoneCount').textContent=zones.length;$('scooterCount').textContent=vehicles.length;
- let boundsPoints=[...stations.map(st=>st.p),...vehicles.slice(0,50).map(v=>v.p)];
- if(boundsPoints.length)map.fitBounds(L.latLngBounds(boundsPoints),{padding:[35,35],maxZoom:14});
- const noRideCount=zones.filter(z=>z.kind==='no-ride').length;
- const summary=stations.length+' parking locations, '+zones.length+' geofence areas ('+noRideCount+' no-ride), '+vehicles.length+' vehicles.';
- if(!noRideCount||!stations.length||errors.length){
-  status('Ottawa Bird data is incomplete: '+summary+'\n'+(errors.length?'Feed errors: '+errors.join('; ')+'\n':'')+
-   'Scooter route planning stays disabled unless verified no-ride polygons and Bird parking points load. Use /api/bird-status for diagnostics.','error');
- }else status('Bird Ottawa data loaded: '+summary+'\nRoutes will avoid loaded no-ride zones; confirm remaining restrictions in Bird.','good');
- $('load').disabled=false;
-}
-function rulesAt(p,kind){return zones.some(z=>z.kind===kind&&insideFeature([p[1],p[0]],z.feature.geometry))}function insideFeature(p,g){if(!g)return false;if(g.type==='Polygon')return polygon(p,g.coordinates);if(g.type==='MultiPolygon')return g.coordinates.some(poly=>polygon(p,poly));return false}function polygon(pt,rings){if(!rings?.length)return false;return ring(pt,rings[0])&&!rings.slice(1).some(r=>ring(pt,r))}function ring(pt,vertices){let inside=false;for(let i=0,j=vertices.length-1;i<vertices.length;j=i++){let a=vertices[i],b=vertices[j];if(((a[1]>pt[1])!==(b[1]>pt[1]))&&(pt[0]<(b[0]-a[0])*(pt[1]-a[1])/(b[1]-a[1])+a[0]))inside=!inside}return inside}function pathConflicts(coords){let blocked=false,checked=0;for(let i=1;i<coords.length;i++){let a=coords[i-1],b=coords[i],n=Math.max(1,Math.ceil(distance(a,b)/35));for(let k=0;k<=n;k++){let t=k/n,p=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];checked++;if(rulesAt(p,'no-ride'))blocked=true;if(blocked)return true;if(checked>50000)return null}}return false}
-async function geocode(s){let q=s.trim();if(!q)throw Error('Please enter an address');const terms=q.toLowerCase();let query= /ottawa|ontario|canada|\b(on|qc|quebec)\b/i.test(q)?q:q+', Ottawa, Ontario, Canada';try{const j=await getJSON(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=45.4215&lon=-75.6972`);if(j.features?.length){let f=j.features[0];return [f.geometry.coordinates[1],f.geometry.coordinates[0]]}}catch(e){}let r=await getJSON(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ca&q=${encodeURIComponent(query)}`);if(!r?.length)throw Error(`Address not found: ${s}`);return [+r[0].lat,+r[0].lon]}async function route(a,b,profile='cycling'){let base=`https://router.project-osrm.org/route/v1/${profile}/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson&steps=false`;let j=await getJSON(base);if(j.code!=='Ok'||!j.routes?.[0])throw Error('No routing path available');let r=j.routes[0];return {coords:r.geometry.coordinates.map(c=>[c[1],c[0]]),meters:r.distance,seconds:r.duration}}function drawPath(r,color,weight,dashed){return L.polyline(r.coords,{color,weight,opacity:.92,dashArray:dashed?'7 8':null}).addTo(routeLayer)}function marker(p,cls,msg){L.marker(p,{icon:ico(cls)}).bindPopup(esc(msg)).addTo(pinLayer)}function panel(msg){$('routecard').innerHTML=`<div class="routecard">${msg}</div>`}function modeState(){mode=document.querySelector('input[name="mode"]:checked').value;document.querySelectorAll('.mode').forEach(el=>el.classList.toggle('active',el.querySelector('input').checked))}document.querySelectorAll('input[name="mode"]').forEach(x=>x.addEventListener('change',modeState));
-function noRidePolygons(){let polygons=[];for(let z of zones.filter(x=>x.kind==='no-ride')){let geom=z.feature.geometry;if(geom.type==='Polygon')polygons.push(geom.coordinates);else if(geom.type==='MultiPolygon')polygons.push(...geom.coordinates)}return polygons}
-async function safeScooterRoute(origin,destination){
- const polys=noRidePolygons();if(!polys.length)throw Error('No published no-ride polygons loaded. Cannot calculate a verified geofence-avoiding route.');
- const resp=await fetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({origin,destination,no_ride_polygons:polys})});
- let data=await resp.json();if(!resp.ok)throw Error(data.error||'Scooter routing unavailable');return data;
-}
-async function plan(targetStation){
- $('navigate').disabled=true;routeLayer.clearLayers();pinLayer.clearLayers();panel('Calculating scooter route that goes AROUND restricted zones. Loading street network can take time…');
+async function loadData(){
+ note('data-state','Requesting Ottawa scooter restrictions…');
  try{
- const a=geolocation||picked.origin?.p||await geocode($('origin').value.trim());
- const destination=targetStation?.p||picked.destination?.p||await geocode($('destination').value.trim());
- if(!stations.length)throw Error('No verified Bird parking points loaded. Cannot select a legal place to end a ride. Refresh the Ottawa Bird feed.');
- if(!zones.length||!noRidePolygons().length)throw Error('No Bird no-ride polygons loaded. For safety, BirdMaps will not suggest a scooter route without these restrictions.');
- let options=targetStation?[targetStation]:stations.filter(s=>!rulesAt(s.p,'no-parking')&&!rulesAt(s.p,'no-ride')).sort((u,v)=>distance(u.p,destination)-distance(v.p,destination)).slice(0,mode==='dock'?8:6);
- if(!options.length)throw Error('No permitted Bird parking point is available.');
- let best=null, failures=[];
- for(let i=0;i<options.length;i++){
-  let station=options[i];panel(`Checking permitted parking point ${i+1} of ${options.length}…<br>Geofences are treated as blocked roads.`);
-  try{let ride=await safeScooterRoute(a,station.p);let score=ride.meters+distance(station.p,destination)*2.5;if(!best||score<best.score)best={station,ride,score};if(i>=2&&best)break;}
-  catch(e){failures.push(e.message);if(i>=2&&/Street network service unavailable|No published no-ride/.test(e.message))break;}
- }
- if(!best)throw Error('No legal-looking scooter path to a Bird parking point was found: '+(failures[0]||'unknown reason'));
- let chosen=best.station,ride=best.ride;
- if(pathConflicts(ride.coords))throw Error('Safety check blocked the calculated route because it intersects a published no-ride zone.');
- drawPath(ride,'#27d69c',6,false);marker(a,'user-icon','Start');marker(destination,'dest-icon','Address destination');
- L.circleMarker(chosen.p,{radius:9,color:'#fbd444',fillColor:'#fbd444',fillOpacity:1}).bindPopup(`Park at ${esc(chosen.name)}`).addTo(pinLayer);
- let walk=null;
- try{walk=await route(chosen.p,destination,'walking');drawPath(walk,'#76adff',4,true)}
- catch(e){walk={meters:distance(chosen.p,destination),seconds:distance(chosen.p,destination)/1.3};L.polyline([chosen.p,destination],{color:'#76adff',dashArray:'6 8',weight:4}).addTo(routeLayer)}
- let bounds=L.latLngBounds(ride.coords);bounds.extend(destination);map.fitBounds(bounds,{padding:[45,45],maxZoom:16});
- panel(`<b>Geofence-avoiding route</b><br>Ride: ${fmt(ride.meters)} · ~${Math.ceil(ride.seconds/60)} min<br>Park at: ${esc(chosen.name)}<br>Walk to address: ${fmt(walk.meters)} · ~${Math.max(1,Math.ceil(walk.seconds/60))} min<br><span class="note">Green route excludes street edges intersecting the published Bird no-ride polygons. Blue dotted line is walking. Local rules, unreported geofences, sidewalk bans and NCC pathway restrictions may still apply. Confirm in Bird before riding. Snapping to street network: ${ride.snap_start_m}m at start / ${ride.snap_end_m}m at end.</span>`);
- }catch(e){panel(`<span style="color:#fa9ea6">${esc(e.message)}</span>`)}finally{$('navigate').disabled=false}
-}
-window.pickStation=function(encoded){let id=decodeURIComponent(encoded),s=stations.find(x=>x.id===id);if(s){mode='address';plan(s)}};$('navigate').onclick=()=>{modeState();plan()};$('load').onclick=loadFeed;$('refresh').onclick=()=>lastFeed?loadFeed():status('Reload Ottawa Bird feed first.');$('clear').onclick=()=>{routeLayer.clearLayers();pinLayer.clearLayers();$('routecard').innerHTML=''};$('locate').onclick=()=>{if(!navigator.geolocation)return status('Geolocation not supported in this browser.','error');navigator.geolocation.getCurrentPosition(pos=>{geolocation=[pos.coords.latitude,pos.coords.longitude];$('origin').value='My current location';map.setView(geolocation,15);status('Current location selected.','good')},err=>status(`Location unavailable: ${err.message}. Use an address instead.`,'error'),{enableHighAccuracy:true,timeout:12000})};$('origin').addEventListener('input',()=>{geolocation=null});
-function addressLabel(p){return [p.name,p.housenumber,p.street,p.city||p.county,p.state].filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i).join(', ')}
-function setupAutocomplete(id){const input=$(id),list=$(id+'-suggestions');let timer=null,seq=0,items=[],index=-1;const close=()=>{list.hidden=true;list.innerHTML='';index=-1};const choose=(it)=>{input.value=it.label;picked[id]={p:it.p,label:it.label};close();if(id==='destination')map.setView(it.p,15)};
-async function suggestions(q,sequence){let data=[];if(cpKey){try{const url='https://ws1.postescanada-canadapost.ca/addresscomplete/interactive/find/v2.10/json3.ws?'+new URLSearchParams({Key:cpKey,SearchTerm:q,Country:'CAN',MaxSuggestions:'7'});const j=await getJSON(url);const arr=j.Items||[];data=arr.filter(x=>x.Text&&x.Id).map(x=>({label:[x.Text,x.Description].filter(Boolean).join(', '),cpId:x.Id,cpNext:x.Next}));if(arr.some(x=>x.Error))throw Error('Canada Post key rejected')}catch(e){$('addresssource').textContent='Canada Post unavailable in this browser; using OpenStreetMap suggestions.';data=[]}}
-if(!data.length){
- const query=q;
- try{
-  const j=await getJSON('https://photon.komoot.io/api/?'+new URLSearchParams({q:query,limit:'8',lat:'45.4215',lon:'-75.6972'}));
-  data=(j.features||[]).filter(f=>f.geometry?.coordinates?.length===2).map(f=>({label:addressLabel(f.properties),p:[f.geometry.coordinates[1],f.geometry.coordinates[0]]}));
- }catch(photonError){
-  try{
-   const j=await getJSON('https://nominatim.openstreetmap.org/search?'+new URLSearchParams({q:query+', Ottawa, Ontario, Canada',format:'json',limit:'5',countrycodes:'ca',addressdetails:'1'}));
-   data=(Array.isArray(j)?j:[]).map(p=>({label:p.display_name,p:[+p.lat,+p.lon]})).filter(p=>p.p.every(Number.isFinite));
-  }catch(nominatimError){throw Error('Photon: '+photonError.message+'; Nominatim: '+nominatimError.message)}
- }
-}
-if(sequence!==seq||document.activeElement!==input)return;items=data;list.innerHTML='';if(!items.length){list.innerHTML='<div class="suggestion">No matching addresses yet. Keep typing a street and number.</div>';list.hidden=false;return}for(const [i,it] of items.entries()){const btn=document.createElement('button');btn.type='button';btn.className='suggestion';btn.role='option';btn.textContent=it.label;btn.addEventListener('mousedown',e=>e.preventDefault());btn.addEventListener('click',async()=>{if(it.cpId){try{const url='https://ws1.postescanada-canadapost.ca/addresscomplete/interactive/retrieve/v2.11/json3.ws?'+new URLSearchParams({Key:cpKey,Id:it.cpId});let j=await getJSON(url),a=j.Items?.[0];if(!a)throw Error('No address');let label=[a.Line1,a.City,a.ProvinceName||a.Province,a.PostalCode].filter(Boolean).join(', ');let p=await geocode(label);choose({label,p})}catch(e){status('Canada Post lookup failed; try OpenStreetMap autocomplete or type the address.','error')}}else choose(it)});list.appendChild(btn)}list.hidden=false;
-}
-input.addEventListener('input',()=>{picked[id]=null;clearTimeout(timer);const q=input.value.trim();if(q.length<3){close();return}const n=++seq;timer=setTimeout(()=>suggestions(q,n).catch(e=>{if(n===seq){list.innerHTML='<div class="suggestion">Suggestions unavailable: '+esc(e.message)+'</div>';list.hidden=false;$('addresssource').textContent='Autocomplete error: '+e.message}}),450)});
-input.addEventListener('keydown',e=>{if(e.key==='Escape'){close();return}if(e.key==='ArrowDown'&&!list.hidden){e.preventDefault();index=Math.min(items.length-1,index+1);list.children[index]?.focus();return}if(e.key==='Enter'){if(!list.hidden&&items[0]){e.preventDefault();list.children[0].click()}else if(id==='destination'){e.preventDefault();plan()}}});input.addEventListener('blur',()=>setTimeout(close,170));}
-setupAutocomplete('origin');setupAutocomplete('destination');$('savecp').onclick=()=>{cpKey=$('cpkey').value.trim();$('addresssource').textContent=cpKey?'Canada Post selected (subject to API access); OpenStreetMap fallback enabled.':'Source: OpenStreetMap / Photon';status(cpKey?'Canada Post AddressComplete enabled where your API key and domain allow requests.':'Using free address suggestions.','good')};
-async function diagnoseConnection(){
- const el=$('diagnostic');el.style.display='block';el.className='status';el.textContent='Checking the BirdMaps server…';
- const details=['Website origin: '+location.origin];const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);
- try{
-  const health=await fetch('/api/health',{cache:'no-store',signal:controller.signal});
-  const body=await health.text();details.push('BirdMaps server: '+health.status+' '+body.slice(0,250));
-  if(!health.ok)throw Error('The server health endpoint did not respond OK');
+  data=await api('/api/data');
+  $('api-state').textContent='Server online';$('api-state').className='pill ok';
+  renderData();
  }catch(e){
-  details.push('Server check FAILED: '+e.message);
-  details.push('Open '+location.origin+'/api/health in a separate tab. If that also fails, check your Render deploy status/logs.');
-  el.className='status error';el.textContent=details.join('\n');clearTimeout(timer);return;
- }finally{clearTimeout(timer)}
- el.textContent=details.join('\n')+'\nChecking the Bird upstream feed…';
- try{
-  const r=await fetch('/api/bird-status',{cache:'no-store'});const j=await r.json();
-  details.push('Bird upstream: '+r.status+' '+JSON.stringify(j).slice(0,500));
-  el.className=r.ok?'status good':'status error';
- }catch(e){details.push('Bird upstream test failed: '+e.message);el.className='status error'}
- el.textContent=details.join('\n');
+  $('api-state').textContent='API offline';$('api-state').className='pill bad';
+  data={stations:[],zones:[],vehicles:[],status:'partial',sources:[],warnings:[String(e)]};
+  renderData();
+  note('data-state','The map is available, but the BirdMaps API cannot be reached: '+e.message+'.\nTry /api/health or open the Render deployment logs. Address suggestions will try a public fallback.','error');
+ }
 }
-$('diagnose').addEventListener('click',diagnoseConnection);
-// Load Ottawa feed from the local proxy; errors are displayed without blocking search.
-loadFeed();
-
+async function resolve(id){
+ if(selected[id])return selected[id];
+ if(id==='origin'&&geo)return geo;
+ const q=$(id).value.trim();if(!q)throw Error('Enter a '+(id==='origin'?'start':'destination')+' address');
+ const results=await lookup(q);if(!results.length)throw Error('No matching Ottawa address for '+q);
+ selected[id]=[results[0].lat,results[0].lon];return selected[id];
+}
+function showRoute(text,err=false){$('routeinfo').innerHTML='<div class="routeinfo" '+(err?'style="color:#ffadb5"':'')+'>'+text+'</div>'}
+async function plan(){
+ if(busy)return;busy=true;$('go').disabled=true;routeLayer.clearLayers();showRoute('Finding your destination…');
+ try{
+  const [a,b]=await Promise.all([resolve('origin'),resolve('destination')]);
+  if(!inOttawa(a)||!inOttawa(b))throw Error('BirdMaps currently supports Ottawa only.');
+  L.circleMarker(a,{radius:6,color:'#44d7af',fillOpacity:1,fillColor:'#44d7af'}).addTo(routeLayer).bindPopup('Start');
+  L.circleMarker(b,{radius:7,color:'#82b4ff',fillOpacity:1,fillColor:'#82b4ff'}).addTo(routeLayer).bindPopup('Destination');
+  map.fitBounds(L.latLngBounds([a,b]),{padding:[48,48],maxZoom:15});
+  if(!data.stations.length)throw Error('No designated Bird or Ottawa parking points are available. Cannot choose a valid trip end.');
+  if(data.status!=='ready')throw Error('No-ride zone data is incomplete, so BirdMaps will not suggest an unsafe scooter route.');
+  const mode=document.querySelector('input[name=mode]:checked').value;
+  const candidates=data.stations.filter(s=>inOttawa([s.lat,s.lon])).sort((x,y)=>distance([x.lat,x.lon],b)-distance([y.lat,y.lon],b)).slice(0,mode==='parking'?1:4);
+  let best=null;
+  for(let i=0;i<candidates.length;i++){
+   const s=candidates[i];showRoute('Checking permitted scooter route '+(i+1)+' of '+candidates.length+'…');
+   try{
+    const r=await api('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({origin:a,destination:[s.lat,s.lon]})});
+    const walk=distance([s.lat,s.lon],b);
+    const score=r.meters+walk*(mode==='parking'?8:2.7);
+    if(!best||score<best.score)best={r,s,walk,score};
+   }catch(e){console.warn('Station route failed',e)}
+  }
+  if(!best)throw Error('No scooter route avoiding all loaded no-ride zones could be found.');
+  const {r,s,walk}=best;
+  L.polyline(r.coords,{color:'#2be2ad',weight:6,opacity:.95}).addTo(routeLayer);
+  L.polyline([[s.lat,s.lon],b],{color:'#82b4ff',weight:4,dashArray:'5 8'}).addTo(routeLayer);
+  L.circleMarker([s.lat,s.lon],{radius:9,color:'#111',fillColor:'#f5d446',fillOpacity:1}).bindPopup(esc(s.name||'Parking point')).addTo(routeLayer);
+  map.fitBounds(L.latLngBounds(r.coords.concat([b])),{padding:[40,40]});
+  showRoute('<strong>Route around published no-ride zones</strong><br>Ride '+fmt(r.meters)+' · about '+Math.ceil(r.seconds/60)+' min<br>Park: '+esc(s.name||'Designated scooter parking')+'<br>Walk '+fmt(walk)+' · about '+Math.ceil(walk/1.3/60)+' min<br><small>Green: scooter street route. Blue dotted: approximate walking connection, not turn-by-turn directions. Not Bird-certified; verify rules, bike lanes and NCC pathway restrictions before riding.</small>');
+ }catch(e){showRoute(esc(e.message),true)}
+ finally{busy=false;$('go').disabled=false}
+}
+document.querySelectorAll('input[name=mode]').forEach(r=>r.addEventListener('change',()=>document.querySelectorAll('.choice').forEach(c=>c.classList.toggle('selected',c.querySelector('input').checked))));
+$('go').addEventListener('click',plan);
+$('refresh').addEventListener('click',loadData);
+$('clear').addEventListener('click',()=>{routeLayer.clearLayers();$('routeinfo').replaceChildren()});
+$('locate').addEventListener('click',()=>{
+ if(!navigator.geolocation)return alert('Location is unavailable.');
+ navigator.geolocation.getCurrentPosition(p=>{
+  geo=[p.coords.latitude,p.coords.longitude];selected.origin=geo;
+  $('origin').value='Current location';map.setView(geo,15);
+ },e=>alert('Location could not be obtained: '+e.message),{timeout:12000,enableHighAccuracy:true});
+});
+loadData();
 </script></body></html>
