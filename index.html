@@ -9,7 +9,30 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script><script>
 const $=id=>document.getElementById(id), map=L.map('map',{zoomControl:false}).setView([45.4215,-75.6972],13);L.control.zoom({position:'topright'}).addTo(map);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
 const zoneLayer=L.layerGroup().addTo(map),stationLayer=L.layerGroup().addTo(map),scooterLayer=L.layerGroup().addTo(map),routeLayer=L.layerGroup().addTo(map),pinLayer=L.layerGroup().addTo(map);let stations=[],zones=[],vehicles=[],lastFeed='',geolocation=null,mode='address'; const picked={origin:null,destination:null}; let cpKey='';
-const ico=(cls)=>L.divIcon({className:'',html:`<div class="${cls}"></div>`,iconSize:[23,23],iconAnchor:[11,11]});function status(s,type=''){const el=$('status');el.textContent=s;el.className='status '+type}function round(n){return Math.round(n)}function distance(a,b){let R=6371000,p=Math.PI/180,dlat=(b[0]-a[0])*p,dlon=(b[1]-a[1])*p;let x=Math.sin(dlat/2)**2+Math.cos(a[0]*p)*Math.cos(b[0]*p)*Math.sin(dlon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}function fmt(m){return m<1000?`${round(m)} m`:`${(m/1000).toFixed(1)} km`}function urlSafe(s){return /^https:\/\//i.test(s)}function feedURL(v){v=v.trim();if(urlSafe(v))return v;return `https://mds.bird.co/gbfs/v2/public/${encodeURIComponent(v)}/gbfs.json`};async function getJSON(url){const endpoint='/api/request?url='+encodeURIComponent(url);let r;try{r=await fetch(endpoint,{headers:{Accept:'application/json'}})}catch(e){throw Error('BirdMaps server is not reachable. Please try again later.')}let j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||`Service returned HTTP ${r.status}`);return j}
+const ico=(cls)=>L.divIcon({className:'',html:`<div class="${cls}"></div>`,iconSize:[23,23],iconAnchor:[11,11]});function status(s,type=''){const el=$('status');el.textContent=s;el.className='status '+type}function round(n){return Math.round(n)}function distance(a,b){let R=6371000,p=Math.PI/180,dlat=(b[0]-a[0])*p,dlon=(b[1]-a[1])*p;let x=Math.sin(dlat/2)**2+Math.cos(a[0]*p)*Math.cos(b[0]*p)*Math.sin(dlon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}function fmt(m){return m<1000?`${round(m)} m`:`${(m/1000).toFixed(1)} km`}function urlSafe(s){return /^https:\/\//i.test(s)}function feedURL(v){v=v.trim();if(urlSafe(v))return v;return `https://mds.bird.co/gbfs/v2/public/${encodeURIComponent(v)}/gbfs.json`};async function getJSON(url){
+ const endpoint='/api/request?url='+encodeURIComponent(url);
+ let last;
+ for(let attempt=0;attempt<3;attempt++){
+  try{
+   const controller=new AbortController();
+   const timer=setTimeout(()=>controller.abort(),attempt===0?14000:24000);
+   let r;
+   try{r=await fetch(endpoint,{headers:{Accept:'application/json'},signal:controller.signal,cache:'no-store'});}
+   finally{clearTimeout(timer)}
+   const j=await r.json().catch(()=>null);
+   if(r.ok&&j!==null)return j;
+   const message=j?.error||`BirdMaps proxy HTTP ${r.status}`;
+   if(r.status<500&&r.status!==429)throw Error(message);
+   last=Error(message);
+  }catch(e){last=e;if(/HTTP 4[0-9][0-9]|not approved/i.test(e.message))break;}
+  if(attempt<2)await new Promise(resolve=>setTimeout(resolve,1200*(attempt+1)));
+ }
+ // Only public geocoding can fall back to a direct browser request. Never use this for Bird geofences.
+ if(/^https:\/\/photon\.komoot\.io\/api\//.test(url)){
+  try{const r=await fetch(url,{headers:{Accept:'application/json'}});if(r.ok)return await r.json()}catch(_){}
+ }
+ throw Error('Address service connection failed: '+(last?.message||'server unavailable')+'. Check /api/health and Render logs if this persists.');
+}
 function entries(j){if(Array.isArray(j?.data?.feeds))return j.data.feeds;if(j?.data&&typeof j.data==='object'){for(let v of Object.values(j.data))if(Array.isArray(v?.feeds))return v.feeds}return []}function unwrap(j,key){if(Array.isArray(j?.data?.[key]))return j.data[key];if(Array.isArray(j?.[key]))return j[key];return []}function point(x){if(Number.isFinite(+x?.lat)&&Number.isFinite(+x?.lon))return [+x.lat,+x.lon];if(Number.isFinite(+x?.latitude)&&Number.isFinite(+x?.longitude))return [+x.latitude,+x.longitude];return null}
 function geometries(raw){if(!raw)return [];if(raw.type==='FeatureCollection')return raw.features||[];if(raw.type==='Feature')return [raw];if(raw.type==='Polygon'||raw.type==='MultiPolygon')return [{type:'Feature',geometry:raw,properties:{}}];if(Array.isArray(raw))return raw.flatMap(geometries);return []}function normalizeZones(j){let z=unwrap(j,'geofencing_zones');if(!z.length)z=j?.data?.geofencing_zones?.features||j?.data?.geofencing_zones?.features||[];let list=[];for(let item of z){let fs=geometries(item.geometry||item);if(!fs.length&&item.geojson)fs=geometries(item.geojson);for(let f of fs){let p={...(item.properties||{}),...(f.properties||{})};let rules=p.rules||item.rules||[];let types=rules.flatMap(r=>r.vehicle_type_ids||[]);let noRide=rules.some(r=>r.ride_allowed===false||r.ride_through_allowed===false)||p.ride_allowed===false||p.ride_through_allowed===false;let noPark=rules.some(r=>r.parking_allowed===false)||p.parking_allowed===false;let slow=rules.some(r=>r.maximum_speed_kph!=null||r.max_speed_kph!=null)||p.maximum_speed_kph!=null;let kind=noRide?'no-ride':noPark?'no-parking':slow?'slow':'other';list.push({feature:f,kind,properties:p,types})}}return list}
 function drawZones(){zoneLayer.clearLayers();for(let z of zones){let c=z.kind==='no-ride'?'#fa7580':z.kind==='no-parking'?'#fcaa47':z.kind==='slow'?'#66a5f5':'#af92dc';L.geoJSON(z.feature,{style:{color:c,fillColor:c,fillOpacity:.16,weight:2}}).bindPopup(`${z.kind.replace('-',' ').toUpperCase()}<br>From published feed; check Bird app`).addTo(zoneLayer)}}function drawStations(){stationLayer.clearLayers();for(let s of stations){L.marker(s.p,{icon:ico('dock-icon')}).bindPopup(`<strong>${esc(s.name)}</strong><br>Published Bird parking point<br><button onclick="window.pickStation('${encodeURIComponent(s.id)}')">Directions here</button>`).addTo(stationLayer)}}function drawVehicles(){scooterLayer.clearLayers();for(let v of vehicles.slice(0,2500)){L.circleMarker(v.p,{radius:4,color:'#2cddb1',fillColor:'#2cddb1',fillOpacity:.65,weight:1}).bindPopup('Available Bird vehicle (feed)').addTo(scooterLayer)}}function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -53,7 +76,18 @@ window.pickStation=function(encoded){let id=decodeURIComponent(encoded),s=statio
 function addressLabel(p){return [p.name,p.housenumber,p.street,p.city||p.county,p.state].filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i).join(', ')}
 function setupAutocomplete(id){const input=$(id),list=$(id+'-suggestions');let timer=null,seq=0,items=[],index=-1;const close=()=>{list.hidden=true;list.innerHTML='';index=-1};const choose=(it)=>{input.value=it.label;picked[id]={p:it.p,label:it.label};close();if(id==='destination')map.setView(it.p,15)};
 async function suggestions(q,sequence){let data=[];if(cpKey){try{const url='https://ws1.postescanada-canadapost.ca/addresscomplete/interactive/find/v2.10/json3.ws?'+new URLSearchParams({Key:cpKey,SearchTerm:q,Country:'CAN',MaxSuggestions:'7'});const j=await getJSON(url);const arr=j.Items||[];data=arr.filter(x=>x.Text&&x.Id).map(x=>({label:[x.Text,x.Description].filter(Boolean).join(', '),cpId:x.Id,cpNext:x.Next}));if(arr.some(x=>x.Error))throw Error('Canada Post key rejected')}catch(e){$('addresssource').textContent='Canada Post unavailable in this browser; using OpenStreetMap suggestions.';data=[]}}
-if(!data.length){const query=q;let j=await getJSON('https://photon.komoot.io/api/?'+new URLSearchParams({q:query,limit:'8',lat:'45.4215',lon:'-75.6972'}));data=(j.features||[]).filter(f=>f.geometry?.coordinates?.length===2).map(f=>({label:addressLabel(f.properties),p:[f.geometry.coordinates[1],f.geometry.coordinates[0]]}));}
+if(!data.length){
+ const query=q;
+ try{
+  const j=await getJSON('https://photon.komoot.io/api/?'+new URLSearchParams({q:query,limit:'8',lat:'45.4215',lon:'-75.6972'}));
+  data=(j.features||[]).filter(f=>f.geometry?.coordinates?.length===2).map(f=>({label:addressLabel(f.properties),p:[f.geometry.coordinates[1],f.geometry.coordinates[0]]}));
+ }catch(photonError){
+  try{
+   const j=await getJSON('https://nominatim.openstreetmap.org/search?'+new URLSearchParams({q:query+', Ottawa, Ontario, Canada',format:'json',limit:'5',countrycodes:'ca',addressdetails:'1'}));
+   data=(Array.isArray(j)?j:[]).map(p=>({label:p.display_name,p:[+p.lat,+p.lon]})).filter(p=>p.p.every(Number.isFinite));
+  }catch(nominatimError){throw Error('Photon: '+photonError.message+'; Nominatim: '+nominatimError.message)}
+ }
+}
 if(sequence!==seq||document.activeElement!==input)return;items=data;list.innerHTML='';if(!items.length){list.innerHTML='<div class="suggestion">No matching addresses yet. Keep typing a street and number.</div>';list.hidden=false;return}for(const [i,it] of items.entries()){const btn=document.createElement('button');btn.type='button';btn.className='suggestion';btn.role='option';btn.textContent=it.label;btn.addEventListener('mousedown',e=>e.preventDefault());btn.addEventListener('click',async()=>{if(it.cpId){try{const url='https://ws1.postescanada-canadapost.ca/addresscomplete/interactive/retrieve/v2.11/json3.ws?'+new URLSearchParams({Key:cpKey,Id:it.cpId});let j=await getJSON(url),a=j.Items?.[0];if(!a)throw Error('No address');let label=[a.Line1,a.City,a.ProvinceName||a.Province,a.PostalCode].filter(Boolean).join(', ');let p=await geocode(label);choose({label,p})}catch(e){status('Canada Post lookup failed; try OpenStreetMap autocomplete or type the address.','error')}}else choose(it)});list.appendChild(btn)}list.hidden=false;
 }
 input.addEventListener('input',()=>{picked[id]=null;clearTimeout(timer);const q=input.value.trim();if(q.length<3){close();return}const n=++seq;timer=setTimeout(()=>suggestions(q,n).catch(e=>{if(n===seq){list.innerHTML='<div class="suggestion">Suggestions unavailable: '+esc(e.message)+'</div>';list.hidden=false;$('addresssource').textContent='Autocomplete error: '+e.message}}),450)});
