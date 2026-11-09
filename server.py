@@ -37,9 +37,10 @@ class Handler(BaseHTTPRequestHandler):
             data=(ROOT/'index.html').read_bytes()
             self.send_response(200)
             self.send_header('Content-Type','text/html; charset=utf-8')
+            self.send_header('Cache-Control','no-store, max-age=0')
             self.send_header('Content-Length',str(len(data)))
             self.end_headers();self.wfile.write(data);return
-        if p.path=='/api/health':return self.send_json({'ok':True,'service':'BirdMaps Ottawa','build':'bird-feed-diagnostics-v1'})
+        if p.path=='/api/health':return self.send_json({'ok':True,'service':'BirdMaps Ottawa','build':'ottawa-feed-v06'})
         if p.path=='/api/bird-status':
             target='https://mds.bird.co/gbfs/v2/public/ottawa/gbfs.json'
             try:
